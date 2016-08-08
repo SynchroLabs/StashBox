@@ -1,0 +1,10 @@
+{
+    "mounts": 
+    [
+        { 
+            "mount": "/",
+            "provider": "file", 
+            "basePath": "stash" 
+        }
+    ]
+}
