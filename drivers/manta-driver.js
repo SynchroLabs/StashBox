@@ -1,8 +1,35 @@
-// This is the Manta driver
+// 
+// Provider: "manta" (Joyent Manta storage)
 //
 // https://apidocs.joyent.com/manta/
 // https://apidocs.joyent.com/manta/nodesdk.html
 // https://github.com/joyent/node-manta
+//
+// Example config:
+//
+// Using a keystore file (ssh key file):
+//
+// {
+//   "mount": "/foo/bar",
+//   "provider": "manta",
+//   "basePath": "~~/stor/",
+//   "url": "https://us-east.manta.joyent.com",
+//   "user": "user@domain.com"
+//   "keyId": "8c:09:65:e3:8c:09:65:e3:8c:09:65:e3:8c:09:65:e3",
+//   "keyStore": "/Users/you/.ssh/joyent_id_rsa"
+// }
+//
+// Specifying the key explicitly in config (using contents of ssh key file):
+//
+// {
+//   "mount": "/foo/bar",
+//   "provider": "manta",
+//   "basePath": "~~/stor/",
+//   "url": "https://us-east.manta.joyent.com",
+//   "user": "user@domain.com"
+//   "keyId": "8c:09:65:e3:8c:09:65:e3:8c:09:65:e3:8c:09:65:e3",
+//   "key": "-----BEGIN RSA PRIVATE KEY-----\nLOTS-OF-KEY-DATA-HERE==\n-----END RSA PRIVATE KEY-----"
+// }
 //
 var logger = require('log4js').getLogger("manta-driver");
 
@@ -11,50 +38,24 @@ var path = require('path');
 
 var manta = require('manta');
 
-// Sample config
-//
-//  params: 
-//  {
-//    "directory": "~~/stor/",
-//    "keyStore": "/Users/bob/.ssh/joyent_id_rsa",
-//    "keyId": "8c:09:65:e3:74:54:52:3f:c1:82:3b:5d:cd:09:bc:f4",
-//    "url": "https://us-east.manta.joyent.com",
-//    "user": "bob@synchro.io"
-//  }
-//
-// Alternatively, you can use "key" instead of "keyStore", and populate it with the key itself (in the same
-// form as the contents of an .ssh file)
-//
-// Or if using env vars (in the normal Manta way, AFAICT):
-//
-//  Key must be in ~/.ssh and named id_rsa
-//  MANTA_KEY_ID="8c:09:65:e3:74:54:52:3f:c1:82:3b:5d:cd:09:bc:f4"
-//  MANTA_URL="https://us-east.manta.joyent.com"
-//  MANTA_USER="bob@synchro.io"
-//
-// As above, you can use MANTA_KEY (populated with actual key) instead of, in this case, relying on the default ssh key.
-//
-
 module.exports = function(params)
 {
     var basePath = params.basePath;
 
     logger.debug("Using Manta module store, basePath:", basePath);
 
-    // "key" is key if provided, else from keyStore if provided, else from default ssh key.
-    //    - Not clear if default ssh key is really ever useful here.
-    //    - Should explicit keyStore be prioritized over MANTA_KEY env var?
+    // key is "key" if provided, else from "keyStore" file.
     //
-    var key = params.key || process.env.MANTA_KEY || fs.readFileSync(params.keyStore || (process.env.HOME + '/.ssh/id_rsa'), 'utf8'); 
+    var key = params.key || fs.readFileSync(params.keyStore, 'utf8'); 
 
     var client = manta.createClient({
         sign: manta.privateKeySigner({
             key: key,
-            keyId: params.keyId || process.env.MANTA_KEY_ID,
-            user: params.user || process.env.MANTA_USER
+            keyId: params.keyId,
+            user: params.user
         }),
-        user: params.user || process.env.MANTA_USER,
-        url: params.url || process.env.MANTA_URL
+        user: params.user,
+        url: params.url
     });
 
     logger.debug('Manta client setup: %s', client.toString());
@@ -64,7 +65,10 @@ module.exports = function(params)
         provider: "manta",
         getBlobText: function(filename, callback)
         {
-            var filePath = path.posix.join(basePath, filename); 
+            // path.posix.normalize will move any ../ to the front, and the regex will remove them.
+            //
+            var safeFilenamePath = path.posix.normalize(filename).replace(/^(\.\.[\/\\])+/, '');
+            var filePath = path.posix.join(basePath, safeFilenamePath); 
 
             client.get(filePath, function(err, stream) 
             {
@@ -84,14 +88,12 @@ module.exports = function(params)
 
                 if (stream)
                 {
-                    stream.setEncoding('utf8');
-
                     const chunks = [];
                     stream.on('data', (chunk) => {
                         chunks.push(chunk);
                     });
                     stream.on('end', () => {
-                        callback(null, chunks.join(''));
+                        callback(null, Buffer.concat(chunks));
                     });
                 }
             });

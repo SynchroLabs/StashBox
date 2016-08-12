@@ -42,11 +42,6 @@ function getDriverMiddleware(driver)
     {
         logger.info("getting %s using %s", req.url, JSON.stringify(driver));
 
-        // If the URL has a ?decode param, then we do a base64 decode on the content before returning it.  This makes
-        // it easier to handle multiline files as env vars in particular (things like .cer and .pem files).
-        //
-        var url = req.url.split("?");
-
         driver.getBlobText(url[0], function(err, contents)
         {
             if (err)
@@ -65,11 +60,6 @@ function getDriverMiddleware(driver)
             }
             else
             {
-                if (url[1] === "decode")
-                {
-                    logger.info("Decode");
-                    contents = new Buffer(contents, 'base64');
-                }
                 res.send(contents);
             }
         });
@@ -134,7 +124,10 @@ function addMountPoint(mount)
 var mounts = config.get('mounts');
 for (var i = 0; i < mounts.length; i++)
 {
-    addMountPoint(mounts[i]);
+    if (mounts[i])
+    {
+        addMountPoint(mounts[i]);
+    }
 }
 
 // This is our catch-all to handle requests that didn't match any mount point.  We do this so we can control

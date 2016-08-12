@@ -54,7 +54,7 @@ module.exports = function(params)
                 chunks.push(chunk);
             });
             stream.on('end', () => {
-                content = chunks.join('');
+                content = Buffer.concat(chunks);
             });
         }
     }

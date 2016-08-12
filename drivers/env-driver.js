@@ -1,51 +1,77 @@
-// This is the environment var driver
+//
+// Provider: "env" (environment variable)
+//
+// Allows for mapping a mount path to a single environment variable by specifying the "mount" and "var"
+// elements.  To set an environment variable to the contents of a file from the command line:
+//
+//     export KEY="$(cat keyfile.pem)"
+//
+// If the environment variable is populated with base64 encoded contents and the goal is to transfer the 
+// decoded contents, you can additionally specify "encoding" as "base64".  To set an environment variable
+// to the base64 encoded contents of a file from the command line:
+//
+//     export KEY64="$(cat keyfile.pem | base64)"
+//
+// Example configs:
+//
+// {
+//   "mount": "/secret/key.pem",
+//   "provider": "env",
+//   "var": "KEY"
+// }
+//
+// {
+//   "mount": "/secret/key64.pem",
+//   "provider": "env",
+//   "var": "KEY64",
+//   "encoding": "base64"
+// }
 //
 var logger = require('log4js').getLogger("env-driver");
-
 
 module.exports = function(params)
 {
     logger.debug("Using env driver");
 
-    // We require a list of published env vars (so we don't expose the entire env of the machine)
-    //
-    if (!params.vars)
+    if (!params.var)
     {
-        throw Error("A specific list of env 'vars' must be provided to the env provider");
+        throw Error("A 'var' must be provided to the env provider");
     }
-
-    // The 'vars' spec may be a comma or space separated string (particularly when it is itself specified via an env var 
-    // to StashBox).  If we encounter this form, we will convert to an array of strings (the native/canonical form).
-    //
-    if (typeof params.vars === 'string' || params.vars instanceof String)
-    {
-        params.vars = params.vars.split(/[, ]/);
-    }
-
-    logger.debug("Published env vars:", params.vars);
 
     var driver = 
     {
         provider: "env",
         getBlobText: function(filename, callback)
         {
-            var envVar = filename.substring(1);
-
-            if (params.vars.indexOf(envVar) >= 0)
+            var envValue = null;
+            if (filename === "/")
             {
-                var envValue = process.env[envVar];
-                logger.info("envValue of: %s = %s", envVar, envValue);
-                if (envValue === undefined)
+                if (process.env[params.var])
                 {
-                    envValue = null;
+                    envValue = process.env[params.var];
+                    if (params.encoding === 'base64')
+                    {
+                        envValue = new Buffer(envValue, 'base64');
+                    }
+                    logger.debug("Returning value for env var: %s", params.var);
                 }
-                callback(null, envValue);
+                else
+                {
+                    // No env var with the specified value - 404 (return null)
+                    //
+                    logger.debug("No value for env var: %s", params.var);
+                }
             }
             else
             {
-                logger.info("Env provider got request for var '%s' not specified in 'vars' list, returning 404", envVar);
-                callback(null, null);
+                // Env mount points should fully specify the mount path.  If we get any "extra"
+                // path here, in the form of filename (such as appending a slash and additional
+                // path elements), then we consider this a miss/404.
+                //
+                logger.debug("Extra path elements for env var mounted at: %s", params.mount);
             }
+
+            callback(null, envValue);
         }
     }
 
