@@ -15,11 +15,31 @@ execute a script to get those files at startup, such as:
     curl http://stashbox/ssl/domain.pem -o /etc/ssl/domain.pem
     curl http://stashbox/ssl/domain.key -o /etc/ssl/domain.key
 
+Here is a more complex version that does optional download (if file is available from StashBox, download it, otherwise
+fail silently).  This allows for optional override of local files via StashBox, and for provision of files from StashBox  
+based on logical configuration.  For examples, SSL cert and key files would only be provided from StashBox if nginx was
+configued to use SSL.
+
+    optionalStashboxDownload() {
+        status=$(curl $1 -w %{http_code} -s -S -f -o $2 --stderr err.txt)
+        if [ $status -eq 404 ]; then
+            echo "File $1 not found in Stashbox, local file (if any) will be used"
+        elif [ $status -eq 200 ]; then
+            echo "File $1 installed from StashBox"
+        else
+            echo "ERROR: Checking Stashbox for $1 failed, status: $status"
+            cat err.txt
+            exit 1
+        fi;    
+    }
+
+    optionalStashboxDownload("http://stashbox/ssl/domain.crt", "/etc/ssl/certificates/domain.crt")
+
 ## Configuration
 
 StashBox itself can be configured via a local configuration file or via environment variables.  The StashBox config.json
-file contains a series of mount points that define locations where data is served and the provider configuration that
-supports access to the underlying data.
+file may contain general configuration information as well as a series of mount points that define locations where data is
+served and the provider configuration that supports access to the underlying data.
 
 ### General Configuration
 
@@ -67,6 +87,16 @@ from an environment variable call KEY, you would add the following mount:
         "mount": "/ssl/key.pem",
         "provider": "env",
         "var": "KEY"
+    }
+
+If the environment variable contains base64 encoded content that you want to decode before serving, you may specify
+the encoding, as follows:
+
+    {
+        "mount": "/ssl/key.pem",
+        "provider": "env",
+        "var": "KEY64",
+        "encoding": "base64"
     }
 
 You may define any number of mounts using any desired providers.
