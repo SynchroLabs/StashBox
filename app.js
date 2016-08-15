@@ -40,9 +40,9 @@ function getDriverMiddleware(driver)
 {
     return function(req, res)
     {
-        logger.info("getting %s using %s", req.url, JSON.stringify(driver));
+        logger.info("Getting %s using %s", req.originalUrl, driver.provider);
 
-        driver.getBlobText(url[0], function(err, contents)
+        driver.getBlobText(req.url, function(err, contents)
         {
             if (err)
             {
@@ -82,7 +82,7 @@ function addMountPoint(mount)
     }
     else if (mount.provider === "proxy")
     {
-        logger.info("Adding file mount for:", mount.mount);
+        logger.info("Adding proxy mount for:", mount.mount);
         app.use(mount.mount, proxy(mount.host, 
         {
             forwardPath: function(req, res) 

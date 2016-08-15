@@ -127,12 +127,12 @@ Consider the folling config.json:
 That could also be implemented with the following environment varables:
 
     STASHBOX__PORT=1337
-    STASHBOX__mounts__0__mount="/"
-    STASHBOX__mounts__0__provider="file"
-    STASHBOX__mounts__0__basePath="stash"
-    STASHBOX__mounts__1__mount="/env"
-    STASHBOX__mounts__1__provider="env"
-    STASHBOX__mounts__1__var="KEY"
+    STASHBOX__mounts__0__mount=/
+    STASHBOX__mounts__0__provider=file
+    STASHBOX__mounts__0__basePath=stash
+    STASHBOX__mounts__1__mount=/domain.key
+    STASHBOX__mounts__1__provider=env
+    STASHBOX__mounts__1__var=KEY
 
 ## Providers:
 
