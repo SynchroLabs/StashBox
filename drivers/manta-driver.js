@@ -46,6 +46,11 @@ module.exports = function(params)
 
     // key is "key" if provided, else from "keyStore" file.
     //
+    if (params.key64)
+    {
+        params.key = new Buffer(params.key64, 'base64').toString();
+    }
+    
     var key = params.key || fs.readFileSync(params.keyStore, 'utf8'); 
 
     var client = manta.createClient({
