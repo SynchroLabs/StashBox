@@ -161,9 +161,10 @@ StashBox provides support for many providers.  See the list below.
     "url": "https://us-east.manta.joyent.com",
     "user": "foo@bar.com",
     "keyId": "e3:09:8c:65:e3:09:8c:65:e3:09:8c:65:e3:09:8c:65:",
-    // Provide either keyStore (reference to key file) *OR* key (actual key data)
+    // Provide either keyStore (reference to key file) *OR* key (actual key data) *OR* key64 (base64 encoded key data)
     "keyStore": "/Users/xxx/.ssh/joyent_id_rsa",
     "key": "-----BEGIN RSA PRIVATE KEY----- (actual key data)",
+    "key64": "xxxxxxxxxxxx",
     "basePath": "~~/stor/path"
 
 All storage providers below use PkgCloud (see https://github.com/pkgcloud/pkgcloud#storage for more details on provider config)
