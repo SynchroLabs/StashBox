@@ -9,6 +9,8 @@ data, including configuration files and secrets, from a StashBox container, with
 details of where StashBox is getting the data.  And the only tooling the client containers need in order to talk to 
 StashBox is curl.
 
+![StashBox](res/StashBox.png)
+
 For example, assume you have an Nginx container that needs certificates and private key files.  That server could simply
 execute a script to get those files at startup, such as:
 
