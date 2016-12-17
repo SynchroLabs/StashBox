@@ -18,9 +18,11 @@
     "url": "https://github.com/SynchroLabs/StashBox/issues"
   },
   "dependencies": {
+    "body-parser": "^1.15.2",
     "commander": "^2.3.0",
     "express": "~4.14.0",
     "express-http-proxy": "^0.9.1",
+    "fs-extra": "^1.0.0",
     "log4js": "^0.6.21",
     "manta": "^3.0.0",
     "nconf": "^0.7.1",

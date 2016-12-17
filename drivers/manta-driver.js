@@ -42,7 +42,7 @@ module.exports = function(params)
 {
     var basePath = params.basePath;
 
-    logger.debug("Using Manta module store, basePath:", basePath);
+    logger.debug("Using Manta store, basePath:", basePath);
 
     // key is "key" if provided, else from "keyStore" file.
     //
@@ -68,7 +68,7 @@ module.exports = function(params)
     var driver = 
     {
         provider: "manta",
-        getBlobText: function(filename, callback)
+        getObject: function(filename, callback)
         {
             // path.posix.normalize will move any ../ to the front, and the regex will remove them.
             //

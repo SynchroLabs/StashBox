@@ -1,4 +1,5 @@
 var express = require('express');
+var bodyParser = require('body-parser');
 var path = require('path');
 var url = require('url');
 var log4js = require('log4js');
@@ -8,6 +9,7 @@ var pkg = require('./package.json');
 
 var proxy = require('express-http-proxy');
 
+var fileDriver = require('./drivers/file-driver');
 var envDriver = require('./drivers/env-driver');
 var mantaDriver = require('./drivers/manta-driver');
 var pgkcloudDriver = require('./drivers/pkgcloud-driver');
@@ -36,33 +38,91 @@ logger.info("StashBox server loading - " + config.configDetails);
 
 var app = express();
 
+app.use(bodyParser.raw(
+{
+    type: function(type) {
+        // This is required (setting */* doesn't work when sending client doesn't specify c/t)
+        return true;
+    },
+    verify: function(req, res, buf, encoding) {
+        // This is a way to get a shot at the raw body (some people store it in req.rawBody for later use)
+    }
+}));
+
 function getDriverMiddleware(driver)
 {
     return function(req, res)
     {
-        logger.info("Getting %s using %s", req.originalUrl, driver.provider);
+        logger.info("Processing %s of %s using '%s' driver", req.method, req.originalUrl, driver.provider);
 
-        driver.getBlobText(req.url, function(err, contents)
+        if (req.method === "GET")
         {
-            if (err)
+            driver.getObject(req.url, function(err, contents)
             {
-                // We don't want to leak any information about this mountPoint, so we log the error
-                // locally and just return "Error" to the caller.
-                //
-                logger.error("Error in request for: %s, details: %s", req.url, JSON.stringify(err));
-                res.status(500).send('Error');
-            }
-            else if (contents === null)
+                if (err)
+                {
+                    // We don't want to leak any information about this mountPoint, so we log the error
+                    // locally and just return "Error" to the caller.
+                    //
+                    logger.error("GET error in request for: %s, details: %s", req.url, JSON.stringify(err));
+                    res.sendStatus(500);
+                }
+                else if (contents === null)
+                {
+                    // null response from driver means not found...
+                    //
+                    res.status(404).send('Not found');
+                }
+                else
+                {
+                    res.send(contents);
+                }
+            });
+        }
+        else if (req.method === "PUT")
+        {
+            if (driver.putObject)
             {
-                // null response from driver means not found...
-                //
-                res.status(404).send('Not found');
+                driver.putObject(req.url, req.body, function(err)
+                {
+                    if (err)
+                    {
+                        logger.error("PUT error in request for: %s, details: %s", req.url, JSON.stringify(err));
+                        res.sendStatus(500);
+                    }
+                    else
+                    {
+                        res.sendStatus(200);
+                    }
+                });
             }
             else
             {
-                res.send(contents);
+                res.sendStatus(403); // Method Not Allowed - driver doesn't support PUT
             }
-        });
+        }
+        else if (req.method === "DELETE")
+        {
+            if (driver.deleteObject)
+            {
+                driver.deleteObject(req.url, function(err)
+                {
+                    if (err)
+                    {
+                        logger.error("DELETE error in request for: %s, details: %s", req.url, JSON.stringify(err));
+                        res.sendStatus(500);
+                    }
+                    else
+                    {
+                        res.sendStatus(200);
+                    }
+                });
+            }
+            else
+            {
+                res.sendStatus(403); // Method Not Allowed - driver doesn't support DELETE
+            }
+        }
     }
 }
 
@@ -70,17 +130,7 @@ function addMountPoint(mount)
 {
     logger.debug("Mount point: %s, mount: %s", mount.mount, JSON.stringify(mount));
 
-    if (mount.provider === "file")
-    {
-        logger.info("Adding file mount for:", mount.mount);
-        var mountPath = mount.basePath;
-        if (!path.isAbsolute(mountPath))
-        {
-            mountPath = path.join(__dirname, mount.basePath)
-        }
-        app.use(mount.mount, express.static(mountPath));
-    }
-    else if (mount.provider === "proxy")
+    if (mount.provider === "proxy")
     {
         logger.info("Adding proxy mount for:", mount.mount);
         app.use(mount.mount, proxy(mount.host, 
@@ -96,7 +146,12 @@ function addMountPoint(mount)
     else
     {
         var driver;
-        if (mount.provider === "env")
+        if (mount.provider === "file")
+        {
+            logger.info("Adding file mount for:", mount.mount);
+            driver = new fileDriver(mount);
+        }
+        else if (mount.provider === "env")
         {
             logger.info("Adding env mount for:", mount.mount);
             driver = new envDriver(mount);

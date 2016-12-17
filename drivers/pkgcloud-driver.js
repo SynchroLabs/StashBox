@@ -8,7 +8,7 @@ var pkgcloud = require('pkgcloud');
 
 module.exports = function(params)
 {
-    logger.debug("Using PkgCloud module store, provider:", params.provider);
+    logger.debug("Using PkgCloud store, provider:", params.provider);
 
     var client = pkgcloud.storage.createClient(params);
     var basePath = params.basePath;
@@ -16,7 +16,7 @@ module.exports = function(params)
     var driver = 
     {
         provider: params.provider,
-        getBlobText: function(blobName, callback)
+        getObject: function(blobName, callback)
         {
             var options = {
                 container: basePath,

@@ -41,7 +41,7 @@ module.exports = function(params)
     var driver = 
     {
         provider: "env",
-        getBlobText: function(filename, callback)
+        getObject: function(filename, callback)
         {
             var envValue = null;
             if (filename === "/")
