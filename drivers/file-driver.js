@@ -65,36 +65,50 @@ module.exports = function(params)
     var driver = 
     {
         provider: "file",
+        doesObjectExist: function(filename, callback)
+        {
+            var filePath = toSafeLocalPath(basePath, filename);
+            try
+            {
+                callback(null, fs.existsSync(filePath));
+            }
+            catch (err)
+            {
+                callback(err);
+            }
+        },
         getObject: function(filename, callback)
         {
             var filePath = toSafeLocalPath(basePath, filename);
 
-            var stats = fs.statSync(filePath);
-            if (stats.isDirectory())
+            try
             {
-                var dir = getObjects(filePath);
-                callback(null, dir);
-            }
-            else
-            {
-                fs.readFile(filePath, 'utf8', function(err, content)
+                var stats = fs.statSync(filePath);
+                if (stats.isDirectory())
                 {
-                    if (err && (err.code === 'ENOENT'))
-                    {
-                        err = null; // We return null content to indicate "Not found"
-                        content = null;
-                    }
-                    callback(err, content);
-                });
+                    var dir = getObjects(filePath);
+                    callback(null, dir);
+                }
+                else
+                {
+                    fs.readFile(filePath, 'utf8', callback);
+                }
+            }
+            catch (err)
+            {
+                if (err.code === 'ENOENT')
+                {
+                    // We return null content to indicate "Not found"
+                    err = null;
+                }
+                callback(err, null);
             }
         },
         putObject: function(filename, content, callback)
         {
             var filePath = toSafeLocalPath(basePath, filename); 
-            fs.writeFile(filePath, content, 'utf8', function(err)
-            {
-                callback(err);
-            });
+            // outputFile will create parent directory if it doesn't exist
+            fs.outputFile(filePath, content, 'utf8', callback);
         },
         deleteObject: function(filename, callback)
         {

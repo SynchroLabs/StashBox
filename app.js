@@ -55,7 +55,29 @@ function getDriverMiddleware(driver)
     {
         logger.info("Processing %s of %s using '%s' driver", req.method, req.originalUrl, driver.provider);
 
-        if (req.method === "GET")
+        if (req.method === "HEAD")
+        {
+            if (driver.doesObjectExist)
+            {
+                driver.doesObjectExist(req.url, function(err, exists)
+                {
+                    if (err)
+                    {
+                        logger.error("PUT error in request for: %s, details: %s", req.url, JSON.stringify(err));
+                        res.sendStatus(500);
+                    }
+                    else
+                    {
+                        res.sendStatus(exists ? 200 : 404);
+                    }
+                });
+            }
+            else
+            {
+                res.sendStatus(403); // Method Not Allowed - driver doesn't support HEAD
+            }
+        }
+        else if (req.method === "GET")
         {
             driver.getObject(req.url, function(err, contents)
             {
@@ -122,6 +144,11 @@ function getDriverMiddleware(driver)
             {
                 res.sendStatus(403); // Method Not Allowed - driver doesn't support DELETE
             }
+        }
+        else
+        {
+            logger.error("Unsupported method:", req.method);
+            res.sendStatus(403); // Method Not Allowed - unsupported method
         }
     }
 }
