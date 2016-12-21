@@ -49,45 +49,38 @@ app.use(bodyParser.raw(
     }
 }));
 
+function handleError(req, res)
+{
+    logger.error("%s error in request for: %s, details: %s", req.method, req.url, JSON.stringify(err));
+    res.sendStatus(500);
+}
+
+function handleUnsupported(driver, req, res)
+{
+    if (driver)
+    {
+        logger.error("Unsupported method, '%s' driver doesn't support method: %s", driver.provider, req.method);
+    }
+    else
+    {
+        logger.error("Unsupported method:", req.method);
+    }
+    res.sendStatus(403); // Method Not Allowed
+}
+
 function getDriverMiddleware(driver)
 {
     return function(req, res)
     {
         logger.info("Processing %s of %s using '%s' driver", req.method, req.originalUrl, driver.provider);
 
-        if (req.method === "HEAD")
-        {
-            if (driver.doesObjectExist)
-            {
-                driver.doesObjectExist(req.url, function(err, exists)
-                {
-                    if (err)
-                    {
-                        logger.error("PUT error in request for: %s, details: %s", req.url, JSON.stringify(err));
-                        res.sendStatus(500);
-                    }
-                    else
-                    {
-                        res.sendStatus(exists ? 200 : 404);
-                    }
-                });
-            }
-            else
-            {
-                res.sendStatus(403); // Method Not Allowed - driver doesn't support HEAD
-            }
-        }
-        else if (req.method === "GET")
+        if (req.method === "GET") // All drivers support GET
         {
             driver.getObject(req.url, function(err, contents)
             {
                 if (err)
                 {
-                    // We don't want to leak any information about this mountPoint, so we log the error
-                    // locally and just return "Error" to the caller.
-                    //
-                    logger.error("GET error in request for: %s, details: %s", req.url, JSON.stringify(err));
-                    res.sendStatus(500);
+                    handleError(req, res);
                 }
                 else if (contents === null)
                 {
@@ -101,6 +94,27 @@ function getDriverMiddleware(driver)
                 }
             });
         }
+        else if (req.method === "HEAD")
+        {
+            if (driver.doesObjectExist)
+            {
+                driver.doesObjectExist(req.url, function(err, exists)
+                {
+                    if (err)
+                    {
+                        handleError(req, res);
+                    }
+                    else
+                    {
+                        res.sendStatus(exists ? 200 : 404);
+                    }
+                });
+            }
+            else
+            {
+                handleUnsupported(driver, req, res);
+            }
+        }
         else if (req.method === "PUT")
         {
             if (driver.putObject)
@@ -109,8 +123,7 @@ function getDriverMiddleware(driver)
                 {
                     if (err)
                     {
-                        logger.error("PUT error in request for: %s, details: %s", req.url, JSON.stringify(err));
-                        res.sendStatus(500);
+                        handleError(req, res);
                     }
                     else
                     {
@@ -120,7 +133,7 @@ function getDriverMiddleware(driver)
             }
             else
             {
-                res.sendStatus(403); // Method Not Allowed - driver doesn't support PUT
+                handleUnsupported(driver, req, res);
             }
         }
         else if (req.method === "DELETE")
@@ -131,8 +144,7 @@ function getDriverMiddleware(driver)
                 {
                     if (err)
                     {
-                        logger.error("DELETE error in request for: %s, details: %s", req.url, JSON.stringify(err));
-                        res.sendStatus(500);
+                        handleError(req, res);
                     }
                     else
                     {
@@ -142,13 +154,12 @@ function getDriverMiddleware(driver)
             }
             else
             {
-                res.sendStatus(403); // Method Not Allowed - driver doesn't support DELETE
+                handleUnsupported(driver, req, res);
             }
         }
         else
         {
-            logger.error("Unsupported method:", req.method);
-            res.sendStatus(403); // Method Not Allowed - unsupported method
+            handleUnsupported(null, req, res);
         }
     }
 }
