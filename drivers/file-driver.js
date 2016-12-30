@@ -91,7 +91,7 @@ module.exports = function(params)
                 }
                 else
                 {
-                    fs.readFile(filePath, 'utf8', callback);
+                    fs.readFile(filePath, callback);
                 }
             }
             catch (err)
@@ -108,7 +108,7 @@ module.exports = function(params)
         {
             var filePath = toSafeLocalPath(basePath, filename); 
             // outputFile will create parent directory if it doesn't exist
-            fs.outputFile(filePath, content, 'utf8', callback);
+            fs.outputFile(filePath, content, callback);
         },
         deleteObject: function(filename, callback)
         {

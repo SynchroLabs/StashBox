@@ -34,7 +34,7 @@ var config = stashBoxConfig.getConfig(commander.config, overrides);
 log4js.configure(config.get('LOG4JS_CONFIG'));
 
 var logger = log4js.getLogger("app");
-logger.info("StashBox server loading - " + config.configDetails);
+logger.info("StashBox server v%s loading - %s", pkg.version, config.configDetails);
 
 var app = express();
 
