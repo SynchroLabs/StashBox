@@ -41,7 +41,7 @@ module.exports = function(params)
     	secretKey: s3secretKey,
     	region: s3region,
     	// Debug
-    	secure: false
+    	//secure: false
 	});
 
     logger.debug('S3 Compatible client setup: %s', s3compatibleClient.toString());
