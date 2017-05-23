@@ -9,9 +9,11 @@ var pkg = require('./package.json');
 
 var proxy = require('express-http-proxy');
 
+
 var fileDriver = require('./drivers/file-driver');
 var envDriver = require('./drivers/env-driver');
 var mantaDriver = require('./drivers/manta-driver');
+var s3compatibleDriver = require('./drivers/s3compatible-driver');
 var pgkcloudDriver = require('./drivers/pkgcloud-driver');
 
 // Process command line params
@@ -181,6 +183,8 @@ function addMountPoint(mount)
             }
         }));
     }
+    
+    
     else
     {
         var driver;
@@ -198,6 +202,11 @@ function addMountPoint(mount)
         {
             logger.info("Adding manta mount for:", mount.mount);
             driver = new mantaDriver(mount);
+        }
+        else if (mount.provider === "s3compatible")
+        {
+            logger.info("Adding S3 Compatible mount for:", mount.mount);
+            driver = new s3compatibleDriver(mount);
         }
         else
         {
